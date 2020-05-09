@@ -9,6 +9,9 @@ public class AudioStreamFactory {
 		if (SourceType== MIC){
 			retVal = new MicAudioStreamSource();
 		}
+		else {
+			retVal = new FileAudioStreamSource();
+		}
 		return retVal;
 	}
 }

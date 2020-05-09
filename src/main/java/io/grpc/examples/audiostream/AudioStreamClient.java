@@ -39,15 +39,23 @@ class AudioBufferHandler implements Runnable {
     private  AudioStreamSource audioSource;
     private BlockingQueue<byte[]> sharedQueue;
     private int maxBufferSize;
+    private String fileName;
     
-    AudioBufferHandler(int SourceType, int bufSize, BlockingQueue<byte[]> queue ){
+    AudioBufferHandler(int SourceType){
 		audioSource = AudioStreamFactory.generateAudioSource(SourceType);
-		maxBufferSize = bufSize;
-		sharedQueue = queue;
+    }
+    public void setBufferSize(int bSize){
+    	maxBufferSize = bSize;
+    }
+    public void setResultQueue(BlockingQueue<byte[]> queue) {
+    	sharedQueue = queue;
+    }
+    public void setFileName(String fName) {
+    	fileName = fName;
     }
     @Override
     public void run() {
-	    audioSource.setupSource("");
+	    audioSource.setupSource(fileName);
           byte[] data;
 	    System.out.println("Audio Buffer Thread Running");
 	    if (audioSource.openStream(maxBufferSize)) {
@@ -84,26 +92,36 @@ public class AudioStreamClient {
     private static final int BYTES_PER_BUFFER = 64000; // buffer size in bytes
 	private static final CountDownLatch done = new CountDownLatch(1);
 	private ManagedChannel channel;
+    private String streamType = "M";
+    private String fileName = "";
+
+	private static AudioBufferHandler getStreamHandler(String type) {
+		if (type == "F") {
+			logger.info("Opening File Handler...");
+			 return new AudioBufferHandler(AudioStreamFactory.FILE);
+		}
+		else {
+			logger.info("Opening MIC Handler...");
+			 return new AudioBufferHandler(AudioStreamFactory.MIC);
+		}
+	}
 	
-    public void initialize() {
+    public void initialize(String [] args) {
     	//Create a client object to forward Audio to gRPC Server
          channel = ManagedChannelBuilder
                 .forAddress("localhost", 50051)
                 .usePlaintext()
                 .build();
 	     stub = AudioStreamerGrpc.newStub(channel);
+	     
+	     if (args.length > 0 && args[0].startsWith("F")) {
+	    	 streamType = "F";
+	    	 if (args.length > 1) 
+	    		 fileName = args[1];
+	     }
 	    
     	// Create a shared buffer between threads to capture audio
     	sharedQueue = new LinkedBlockingQueue();
-
-    	// Create a thread to handle Audio Stream
-	    audiostreamhandler = new AudioBufferHandler(AudioStreamFactory.MIC,
-		  										BYTES_PER_BUFFER,
-		  										sharedQueue);
-	    Thread audioThread = new Thread(audiostreamhandler);
-	    try {
-	    	audioThread.start();
-	    } catch (Exception e){}
     }
     
     public void handleServerResponses() throws InterruptedException {
@@ -118,6 +136,19 @@ public class AudioStreamClient {
 	            	@Override
 	            	public void run() {
 	            		logger.info("<-- Server Ready for Next Set");
+	            		
+	                	// Create a thread to handle Audio Stream
+	            	    audiostreamhandler = getStreamHandler(streamType);
+	            	    audiostreamhandler.setBufferSize(BYTES_PER_BUFFER);
+	            	    audiostreamhandler.setResultQueue(sharedQueue);
+	            	    audiostreamhandler.setFileName(fileName);
+	            	    Thread audioThread = new Thread(audiostreamhandler);
+	            	    try {
+	            	    	audioThread.start();
+	            	    } catch (Exception e){}
+
+	            		
+	            		
 	            		while (true) {
 	            			try {
 	            				ByteString tempByteString = ByteString.copyFrom(sharedQueue.take());
@@ -163,7 +194,7 @@ public class AudioStreamClient {
 
     public static void main(String[] args) throws InterruptedException {
 	    AudioStreamClient client = new AudioStreamClient();
-	    client.initialize();
+	    client.initialize(args);
 	    client.handleServerResponses();
 	    client.close();
     }

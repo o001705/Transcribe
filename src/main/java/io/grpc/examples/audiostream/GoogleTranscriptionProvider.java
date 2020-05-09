@@ -32,17 +32,17 @@ public class GoogleTranscriptionProvider implements TranscriptionProvider {
     private long startTime = 0;
     private StreamingRecognizeRequest request;
     
-    private static int restartCounter = 0;
-    private static ArrayList<ByteString> audioInput = new ArrayList<ByteString>();
-    private static ArrayList<ByteString> lastAudioInput = new ArrayList<ByteString>();
-    private static int resultEndTimeInMS = 0;
-    private static int isFinalEndTime = 0;
-    private static int finalRequestEndTime = 0;
-    private static boolean newStream = true;
-    private static double bridgingOffset = 0;
-    private static boolean lastTranscriptWasFinal = false;
-    private static StreamController referenceToStreamController;
-    private static ByteString tempByteString;
+    private int restartCounter = 0;
+    private ArrayList<ByteString> audioInput = new ArrayList<ByteString>();
+    private ArrayList<ByteString> lastAudioInput = new ArrayList<ByteString>();
+    private int resultEndTimeInMS = 0;
+    private int isFinalEndTime = 0;
+    private int finalRequestEndTime = 0;
+    private boolean newStream = true;
+    private double bridgingOffset = 0;
+    private boolean lastTranscriptWasFinal = false;
+    private StreamController referenceToStreamController;
+    private ByteString tempByteString;
 	
 
 	public Boolean connectToProvider(String params) {
@@ -220,7 +220,7 @@ public class GoogleTranscriptionProvider implements TranscriptionProvider {
         startTime = System.currentTimeMillis();
 	}
 	
-	private static String convertMillisToDate(double milliSeconds) {
+	private String convertMillisToDate(double milliSeconds) {
 	    long millis = (long) milliSeconds;
 	    DecimalFormat format = new DecimalFormat();
 	    format.setMinimumIntegerDigits(2);

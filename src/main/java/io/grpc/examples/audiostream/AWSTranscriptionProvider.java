@@ -49,7 +49,7 @@ public class AWSTranscriptionProvider implements TranscriptionProvider {
     private AudioStreamPublisher requestStream;
     private PipedInputStream pinStream;
     private PipedOutputStream poutStream;
-	private static BlockingQueue<TranscriptResponse> sharedQueue;
+	private BlockingQueue<TranscriptResponse> sharedQueue;
 	
 	
 	public Boolean connectToProvider(String params) {
@@ -91,7 +91,7 @@ public class AWSTranscriptionProvider implements TranscriptionProvider {
 	}
 	
 	
-    private static TranscribeStreamingAsyncClient getClient() {
+    private TranscribeStreamingAsyncClient getClient() {
         Region region = getRegion();
         String endpoint = "https://transcribestreaming." + region.toString().toLowerCase().replace('_','-') + ".amazonaws.com";
         try {
@@ -128,7 +128,7 @@ public class AWSTranscriptionProvider implements TranscriptionProvider {
     }
     
     
-    private static StartStreamTranscriptionRequest getRequest(Integer mediaSampleRateHertz) {
+    private StartStreamTranscriptionRequest getRequest(Integer mediaSampleRateHertz) {
         return StartStreamTranscriptionRequest.builder()
                 .languageCode(LanguageCode.EN_US.toString())
                 .mediaEncoding(MediaEncoding.PCM)
@@ -136,7 +136,7 @@ public class AWSTranscriptionProvider implements TranscriptionProvider {
                 .build();
     }
     
-    private static StartStreamTranscriptionResponseHandler getResponseHandler() {
+    private StartStreamTranscriptionResponseHandler getResponseHandler() {
         return StartStreamTranscriptionResponseHandler.builder()
                 .onResponse(r -> {
                     System.out.println("Received Initial response");
@@ -173,7 +173,7 @@ public class AWSTranscriptionProvider implements TranscriptionProvider {
      * AudioStreamPublisher implements audio stream publisher.
      * AudioStreamPublisher emits audio stream asynchronously in a separate thread
      */
-    protected static class AudioStreamPublisher implements Publisher<AudioStream> {
+    protected class AudioStreamPublisher implements Publisher<AudioStream> {
         private final InputStream inputStream;
 
         AudioStreamPublisher(InputStream inputStream) {
