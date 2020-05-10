@@ -33,24 +33,37 @@ import com.google.protobuf.ByteString;
 public class AudioStreamServer {
   private static final Logger logger =
       Logger.getLogger(AudioStreamServer.class.getName());
-  private static String ProviderType = "G"; 
-  
+  private static String ProviderType = PropertyReader.getProperty("Server.DefaultTranscriber"); 
+
+  /* As new Transcrbers are added no need to touch this file
+   * New Transcriber class can be added to  the properties file
+   * Transcriber will be pickedup from here
+   */
   private static TranscriptionProvider getTranscriptionProvider(String type) {
-	  if (type == "A")
-		  return new AWSTranscriptionProvider();
-	  else 
-		  return new GoogleTranscriptionProvider(); 
+	  String providerClass = PropertyReader.getProperty("Server.Transcriber." + type);
+	  //providerClass = "io.grpc.examples.audiostream." + providerClass;
+	  providerClass = TranscriptionProvider.class.getPackage().getName()+ "." + providerClass;
+	  logger.info("Transcription Provider class = " + providerClass);
+	  try {
+	  TranscriptionProvider result =(TranscriptionProvider) 
+			  						Class.forName(providerClass).getConstructor().newInstance();
+	  return result;
+	  } catch (Exception e) {
+		  e.printStackTrace();
+		  System.exit(0);
+		  return null;
+	  }
   }
 
   public static void main(String[] args) throws InterruptedException, IOException {
     // Service class implementation
     if ((args.length > 0) && (args[0].startsWith("A"))) {
     	ProviderType = "A";
-	    System.out.println("Starting AWS Transcribe..");
+	    logger.info("Starting AWS Transcribe..");
     }
 	else {
     	ProviderType = "G";
-	    System.out.println("Starting Google Transcribe...");
+	    logger.info("Starting Google Transcribe...");
 	}
 
     AudioStreamerGrpc.AudioStreamerImplBase svc = new AudioStreamerGrpc.AudioStreamerImplBase() {
@@ -63,7 +76,7 @@ public class AudioStreamServer {
 
         final TranscriptionProvider trans = getTranscriptionProvider(ProviderType);  
         
-		if (trans.connectToProvider(""))
+		if ( (trans != null) && trans.connectToProvider("") )
 		    trans.openTranscriptionEngine("", sharedQueue);
         
 		class ResponseHandler implements Runnable {
@@ -77,9 +90,6 @@ public class AudioStreamServer {
 				                r.timeStamp,
 				                r.transcript,
 				                r.confidenceScore);
-	        			}
-	        			else {
-//	        				Thread.sleep(100); 
 	        			}
         			} catch (InterruptedException e) {
         			}
@@ -125,7 +135,7 @@ public class AudioStreamServer {
                 onReadyHandler.wasReady = false;
               }
             } catch (Throwable throwable) {
-              throwable.printStackTrace();
+              //throwable.printStackTrace();
               responseObserver.onError(
                   Status.UNKNOWN.withDescription("Error handling request").withCause(throwable).asException());
             }
@@ -133,7 +143,6 @@ public class AudioStreamServer {
 
           @Override
           public void onError(Throwable t) {
-        	System.out.println("Error occured. Client Closed");
             trans.closeTranscriptionEngine();
             responseObserver.onCompleted();
           }
@@ -150,7 +159,7 @@ public class AudioStreamServer {
     };
 
     final Server server = ServerBuilder
-        .forPort(50051)
+        .forPort(Integer.parseInt(PropertyReader.getProperty("gRPC.port")))
         .addService(svc)
         .build()
         .start();
@@ -161,9 +170,9 @@ public class AudioStreamServer {
       @Override
       public void run() {
         // Use stderr here since the logger may have been reset by its JVM shutdown hook.
-        System.err.println("Shutting down");
+        System.err.println("Shutting down...");
         try {
-            server.shutdown().awaitTermination(30, TimeUnit.SECONDS);
+            server.shutdown().awaitTermination(Integer.parseInt(PropertyReader.getProperty("Server.ShutdownWaitTimeSec")), TimeUnit.SECONDS);
         } catch (InterruptedException e) {
           e.printStackTrace(System.err);
         }
