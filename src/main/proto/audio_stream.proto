@@ -24,13 +24,25 @@ package audiostream;
 service AudioStreamer {
   // Streams a many greetings
   rpc AudioStream (stream AudioRequest) returns (stream Empty) {}
+  rpc SetMetaData(MetaDataRequest) returns (MetaDataResponse) {}
 }
 
 // The request message containing the user's name.
+// To add Session ID as first parameter in future
 message AudioRequest {
   bytes audio = 1;
 }
 
 // The response message containing the greetings
 message Empty  {
+}
+
+// Created a seperate message Type to allow Server to send some kind of confirmation in future.
+message MetaDataResponse {
+}
+
+message MetaDataRequest {
+   string sessionID = 1;
+   string metaDataJson = 2;
+   string transEngine = 3;
 }

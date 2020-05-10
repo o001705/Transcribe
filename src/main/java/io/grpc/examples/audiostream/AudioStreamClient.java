@@ -42,6 +42,7 @@ public class AudioStreamClient {
     private BlockingQueue<byte[]> sharedQueue;
     private AudioBufferHandler audiostreamhandler;
     AudioStreamerGrpc.AudioStreamerStub stub;
+    AudioStreamerGrpc.AudioStreamerBlockingStub blockingStub;
     private static final int BYTES_PER_BUFFER = 64000; // buffer size in bytes
 	private static final CountDownLatch done = new CountDownLatch(1);
 	private ManagedChannel channel;
@@ -68,6 +69,7 @@ public class AudioStreamClient {
                 .usePlaintext()
                 .build();
        	 stub = AudioStreamerGrpc.newStub(channel);
+       	 blockingStub = AudioStreamerGrpc.newBlockingStub(channel);
 	     
 	     if (args.length > 0 && args[0].startsWith("F")) {
 	    	 streamType = "F";
@@ -76,6 +78,11 @@ public class AudioStreamClient {
 	     }
 	    
     	// Create a shared buffer between threads to capture audio
+	    MetaDataRequest m = MetaDataRequest.newBuilder().setSessionID("13131")
+	    												.setMetaDataJson("JSonTo be Constructed")
+	    												.setTransEngine("G")
+	    												.build();
+	    blockingStub.setMetaData(m);
     	sharedQueue = new LinkedBlockingQueue();
     }
     
@@ -107,6 +114,9 @@ public class AudioStreamClient {
 	            				ByteString tempByteString = ByteString.copyFrom(sharedQueue.take());
 	            				AudioRequest request = AudioRequest.newBuilder().setAudio(tempByteString).build();
 	            				requestStream.onNext(request);
+	            				// If Thread is closed and no messages in SharedQueue break loop
+	            				if ( (!audioThread.isAlive()) && sharedQueue.isEmpty())
+	            					break;
 	            			} catch (InterruptedException e) {
 	            				requestStream.onCompleted();
 	            			}

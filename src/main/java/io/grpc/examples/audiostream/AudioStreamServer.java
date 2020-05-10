@@ -21,7 +21,6 @@ import io.grpc.ServerBuilder;
 import io.grpc.Status;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
-
 import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -37,11 +36,10 @@ public class AudioStreamServer {
 
   /* As new Transcrbers are added no need to touch this file
    * New Transcriber class can be added to  the properties file
-   * Transcriber will be pickedup from here
+   * Transcriber will be picked-up from here
    */
   private static TranscriptionProvider getTranscriptionProvider(String type) {
 	  String providerClass = PropertyReader.getProperty("Server.Transcriber." + type);
-	  //providerClass = "io.grpc.examples.audiostream." + providerClass;
 	  providerClass = TranscriptionProvider.class.getPackage().getName()+ "." + providerClass;
 	  logger.info("Transcription Provider class = " + providerClass);
 	  try {
@@ -51,22 +49,38 @@ public class AudioStreamServer {
 	  } catch (Exception e) {
 		  e.printStackTrace();
 		  System.exit(0);
-		  return null;
 	  }
+	  return null;
   }
 
   public static void main(String[] args) throws InterruptedException, IOException {
-    // Service class implementation
-    if ((args.length > 0) && (args[0].startsWith("A"))) {
-    	ProviderType = "A";
-	    logger.info("Starting AWS Transcribe..");
+    if (args.length > 0) {
+    	if (args[0].startsWith("A")) {
+	    	ProviderType = "A";
+		    logger.info("Starting AWS Transcribe..");
+    	}
+    	else if (args[0].startsWith("G")) {
+        	ProviderType = "G";
+    	    logger.info("Starting Google Transcribe...");
+    	}
+    	else {
+    	    logger.warning("Unknown Provider! Starting Default Provider ...");
+    	}
     }
-	else {
-    	ProviderType = "G";
-	    logger.info("Starting Google Transcribe...");
-	}
+    else {
+	    logger.info("No explicit provider! Starting Default  ...");
+    }
 
     AudioStreamerGrpc.AudioStreamerImplBase svc = new AudioStreamerGrpc.AudioStreamerImplBase() {
+    	@Override
+    	public void setMetaData(MetaDataRequest req, StreamObserver<MetaDataResponse> responseObserver ) {
+    		logger.info("Got Request to set Metadata for " + req.getSessionID());
+            // Send a response.
+    		MetaDataResponse reply = MetaDataResponse.newBuilder().build();
+            responseObserver.onNext(reply);
+            responseObserver.onCompleted();
+    	}
+    	
       @Override
       public StreamObserver<AudioRequest> audioStream(final StreamObserver<Empty> responseObserver) {
     	BlockingQueue<TranscriptResponse> sharedQueue;
